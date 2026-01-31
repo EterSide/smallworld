@@ -1,0 +1,9 @@
+# Render Blueprint - smallworld (H2, 무료 Web Service)
+# https://docs.render.com/blueprint-spec
+services:
+  - type: web
+    name: smallworld
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    # PORT는 Render가 자동 주입, application.properties에서 server.port=${PORT:8080} 사용

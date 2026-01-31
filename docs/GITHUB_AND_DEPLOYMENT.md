@@ -4,6 +4,29 @@
 
 ---
 
+## 지금 바로 GitHub에 올리기 (이미 커밋됨)
+
+로컬에서 **Git 초기화와 첫 커밋**은 이미 되어 있습니다. 아래만 하면 됩니다.
+
+1. **GitHub에서 새 저장소 만들기**
+   - [GitHub New repository](https://github.com/new) 접속
+   - 저장소 이름 예: `smallworld`
+   - **Public** 선택
+   - **Add a README / .gitignore / license** 는 **체크하지 말고** **Create repository** 클릭
+
+2. **터미널에서 원격 연결 후 푸시** (아래 주소는 본인 GitHub 사용자명/저장소명으로 바꾸세요)
+   ```bash
+   git remote add origin https://github.com/<사용자명>/<저장소명>.git
+   git push -u origin master
+   ```
+   예: 저장소가 `https://github.com/myuser/smallworld` 이면
+   ```bash
+   git remote add origin https://github.com/myuser/smallworld.git
+   git push -u origin master
+   ```
+
+---
+
 ## 1. GitHub에 프로젝트 업로드하기
 
 ### 1-1. 사전 준비
@@ -34,7 +57,8 @@
 
 ## 2. 프로그램 배포하기
 
-이 프로젝트는 **웹 애플리케이션 + MySQL DB**이므로, 서버 환경에서 JAR 실행과 DB 설정이 필요합니다.
+이 프로젝트는 **웹 애플리케이션 + H2 내장 DB**이므로, 서버 환경에서 JAR만 실행해도 됩니다.  
+**무료로 사이트(URL) 배포**하려면 → **[무료 사이트 배포 가이드](FREE_SITE_DEPLOYMENT.md)** 참고 (Render, Railway, Fly.io 등).
 
 ### 2-1. 배포 전 준비
 
@@ -43,7 +67,7 @@
 | **빌드** | Gradle로 실행 가능 JAR 생성: `./gradlew bootJar` (Windows: `gradlew.bat bootJar`) |
 | **산출물** | `build/libs/smallworld-0.0.1-SNAPSHOT.jar` (실제 이름은 build.gradle의 `version`에 따름) |
 | **Java** | 서버에 Java 17 설치 필요 |
-| **DB** | MySQL 설치 및 DB/사용자 생성, 접속 정보를 설정에 반영 |
+| **DB** | H2 내장 DB 사용 시 별도 DB 설치 불필요. (PaaS 무료 DB 사용 시 해당 서비스 설정) |
 
 ### 2-2. 배포 방식 선택
 

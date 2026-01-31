@@ -37,8 +37,21 @@ gradlew.bat jpackage
 ## 실행 후 동작
 
 1. `Smallworld.exe` 더블클릭 → Spring Boot(내장 Tomcat) 서버가 기동됩니다.
-2. 브라우저에서 **http://localhost:8080** 을 열면 웹 앱을 볼 수 있습니다.
+2. 서버가 뜨면 **기본 브라우저가 자동으로** http://localhost:8080 을 엽니다. (직접 주소 입력 불필요)
 3. exe를 닫으면 서버가 종료됩니다.
+
+---
+
+## 사용자 설정 (포트·브라우저 자동 열기 등)
+
+exe를 받은 사용자도 **설정 파일 하나**로 포트나 브라우저 자동 열기를 바꿀 수 있습니다.
+
+- **위치**: `Smallworld.exe`가 있는 폴더와 **같은 폴더**에 `application.properties` 파일을 만들면 됩니다.
+- **안내 파일**: exe 옆에 **"설정 예시.txt"** 가 있습니다. 그 내용대로 `application.properties`를 만들고 필요한 줄만 넣으면 됩니다.
+- **예시**
+  - 포트를 9090으로 바꾸기: `server.port=9090`
+  - 브라우저 자동 열기 끄기: `smallworld.open-browser=false`
+- 저장 후 exe를 다시 실행하면 적용됩니다. (코드나 JAR를 수정할 필요 없음)
 
 ---
 

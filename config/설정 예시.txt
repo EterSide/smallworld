@@ -1,0 +1,25 @@
+========================================
+  Smallworld 사용자 설정 방법
+========================================
+
+이 폴더(Smallworld.exe가 있는 폴더)에
+  application.properties
+라는 이름의 파일을 만들고, 아래에서 필요한 줄만 복사해 넣으세요.
+저장 후 exe를 다시 실행하면 적용됩니다.
+
+
+■ 포트를 바꾸려면 (기본 8080, 다른 프로그램이 8080을 쓰는 경우)
+  server.port=9090
+
+
+■ 서버가 뜰 때 브라우저 자동 열기 끄려면
+  smallworld.open-browser=false
+
+
+■ 예시 (포트 9090 + 브라우저 자동 열기 끄기)
+  server.port=9090
+  smallworld.open-browser=false
+
+
+※ 파일 이름은 반드시 application.properties 입니다.
+※ 메모장 등으로 만들고, 확장자가 .properties 인지 확인하세요.

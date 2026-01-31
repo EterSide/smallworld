@@ -41,6 +41,7 @@ tasks.named('test') {
 }
 
 // jpackage: Windows exe(실행 이미지) 생성 (JDK 14+ 필요)
+// boot JAR만 입력으로 사용 (plain JAR가 섞이면 cfg가 잘못되어 "Failed to JVM" 발생)
 tasks.register('jpackage', Exec) {
 	dependsOn bootJar
 	group = 'distribution'
@@ -48,18 +49,32 @@ tasks.register('jpackage', Exec) {
 
 	def jarFile = bootJar.archiveFile.get().asFile
 	def outDir = layout.buildDirectory.dir('jpackage').get().asFile
-	def jpackageExe = "${org.gradle.internal.jvm.Jvm.current().javaHome}" + 
+	def inputDir = layout.buildDirectory.dir('jpackage-input').get().asFile
+	def jpackageExe = "${org.gradle.internal.jvm.Jvm.current().javaHome}" +
 		(org.gradle.internal.os.OperatingSystem.current().isWindows() ? "\\bin\\jpackage.exe" : "/bin/jpackage")
 
 	commandLine jpackageExe,
-		'--input', jarFile.parent,
+		'--input', inputDir,
 		'--name', 'Smallworld',
 		'--main-jar', jarFile.name,
 		'--main-class', 'org.springframework.boot.loader.launch.JarLauncher',
 		'--type', 'app-image',
-		'--dest', outDir
+		'--dest', outDir,
+		'--win-console'  // 실행 시 콘솔 창 표시 (JVM 오류 확인용)
 
 	doFirst {
 		outDir.mkdirs()
+		inputDir.mkdirs()
+		// inputDir 기존 파일 제거 후 boot JAR만 복사 (plain JAR가 남아 있으면 cfg가 잘못됨)
+		inputDir.listFiles()?.each { it.delete() }
+		java.nio.file.Files.copy(jarFile.toPath(), inputDir.toPath().resolve(jarFile.name), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+	}
+	doLast {
+		// 사용자용 설정 예시 파일을 exe 옆에 복사 (포트/브라우저 자동 열기 등 사용자가 수정 가능)
+		def exampleFile = file('config/설정 예시.txt')
+		if (exampleFile.exists()) {
+			def smallworldDir = new File(outDir, 'Smallworld')
+			java.nio.file.Files.copy(exampleFile.toPath(), smallworldDir.toPath().resolve(exampleFile.name), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		}
 	}
 }

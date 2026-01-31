@@ -1,0 +1,12 @@
+.git
+.gitignore
+build
+.gradle
+.idea
+*.iml
+out
+.DS_Store
+docs
+config
+*exe
+jpackage
