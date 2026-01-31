@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연율표고정식 Calculator</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="page-header">
+            <a href="/" class="back-link">← 뒤로가기</a>
+            <h1 class="page-title">⚡ 연율표고정식 Calculator</h1>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-grid">
+            <!-- Left Panel: Extra Deck & Settings -->
+            <aside>
+                <!-- Extra Deck Panel -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">엑스트라 덱</span>
+                        <span class="panel-badge" id="deck-count">0장</span>
+                    </div>
+
+                    <!-- Search -->
+                    <div class="search-wrapper">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="card-search" class="search-input" placeholder="융합/엑시즈 몬스터 검색..."
+                            autocomplete="off">
+                        <div class="autocomplete-dropdown" id="search-dropdown"></div>
+                    </div>
+
+                    <!-- Monster Type Counts -->
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="panel-badge" style="background: #9b59b6;">🟣 융합: <span id="fusion-count">0</span>
+                        </div>
+                        <div class="panel-badge" style="background: #2c3e50;">⚫ 엑시즈: <span id="xyz-count">0</span></div>
+                    </div>
+
+                    <!-- Extra Deck Cards -->
+                    <div id="deck-list" class="card-list">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🃏</div>
+                            <p>융합/엑시즈 몬스터를 추가하세요</p>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <button id="save-deck-btn" class="btn btn-secondary">💾 저장</button>
+                        <button id="clear-deck-btn" class="btn btn-secondary">🗑️ 초기화</button>
+                    </div>
+                </div>
+
+                <!-- Settings Panel -->
+                <div class="panel" style="margin-top: 1rem;">
+                    <div class="panel-header">
+                        <span class="panel-title">계산 조건</span>
+                    </div>
+
+                    <div class="number-input-group">
+                        <label>양쪽 패/필드 카드 수 합계</label>
+                        <input type="number" id="total-card-count" class="number-input" min="1" max="30" value="10"
+                            placeholder="카드 수 입력">
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">
+                            제외할 3장의 별 합계가 이 수와 같아야 합니다
+                        </small>
+                    </div>
+
+                    <div class="number-input-group">
+                        <label>상대 몬스터 레벨/랭크 (되돌리기용)</label>
+                        <input type="number" id="target-level" class="number-input" min="0" max="13" value="0"
+                            placeholder="0 = 사용 안함">
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">
+                            0이면 되돌리기 조합을 계산하지 않습니다
+                        </small>
+                    </div>
+
+                    <div id="star-range" style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                        가능한 별 합계: 계산 중...
+                    </div>
+
+                    <button id="calculate-btn" class="btn" style="width: 100%;">🔍 조합 계산하기</button>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Results -->
+            <main>
+                <!-- Banish Results -->
+                <div class="panel">
+                    <div class="results-header">
+                        <h2 class="results-title">1단계: 제외 조합</h2>
+                        <span class="results-count" id="banish-count"></span>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                        같은 랭크의 엑시즈 2장 + 융합 1장 (별 합계 = 카드 수)
+                    </p>
+
+                    <div id="banish-results">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🎯</div>
+                            <p>조합 계산하기를 클릭하세요</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Return Results -->
+                <div class="panel" style="margin-top: 1rem;">
+                    <div class="results-header">
+                        <h2 class="results-title">2단계: 되돌리기 조합</h2>
+                        <span class="results-count" id="return-count"></span>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                        엑시즈 1장 + 융합 1장 (별 합계 = 상대 몬스터 레벨)
+                    </p>
+
+                    <div id="return-results">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">↩️</div>
+                            <p>상대 몬스터 레벨을 입력하세요</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script th:inline="javascript">
+        // State
+        const state = {
+            extraDeck: [],
+            searchResults: [] // 검색 결과 캐시
+        };
+
+        // DOM Elements
+        const cardSearch = document.getElementById('card-search');
+        const searchDropdown = document.getElementById('search-dropdown');
+        const deckList = document.getElementById('deck-list');
+        const deckCount = document.getElementById('deck-count');
+        const fusionCount = document.getElementById('fusion-count');
+        const xyzCount = document.getElementById('xyz-count');
+        const totalCardCountInput = document.getElementById('total-card-count');
+        const targetLevelInput = document.getElementById('target-level');
+        const starRange = document.getElementById('star-range');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const banishResults = document.getElementById('banish-results');
+        const returnResults = document.getElementById('return-results');
+        const banishCount = document.getElementById('banish-count');
+        const returnCount = document.getElementById('return-count');
+        const saveDeckBtn = document.getElementById('save-deck-btn');
+        const clearDeckBtn = document.getElementById('clear-deck-btn');
+
+        // Debounce
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Toast
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.getElementById('toast-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Search
+        const searchCards = debounce(async (query) => {
+            if (query.length < 2) {
+                searchDropdown.classList.remove('active');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/numeron/api/search?query=${encodeURIComponent(query)}`);
+                const cards = await response.json();
+
+                // 검색 결과를 state에 저장
+                state.searchResults = cards;
+
+                if (cards.length === 0) {
+                    searchDropdown.innerHTML = '<div class="autocomplete-item">검색 결과가 없습니다</div>';
+                } else {
+                    searchDropdown.innerHTML = cards.slice(0, 10).map((card, index) => `
+                    <div class="autocomplete-item" data-card-index="${index}">
+                        <img src="${card.imageUrl || '/images/card-back.png'}" alt="${escapeHtml(card.name)}">
+                        <div class="autocomplete-item-info">
+                            <div class="autocomplete-item-name">${escapeHtml(card.name)}</div>
+                            <div class="autocomplete-item-stats">
+                                ${getCardTypeLabel(card)} / ${card.type === 'Xyz Monster' ? 'Rank' : 'Lv.'} ${card.level || '-'}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                }
+                searchDropdown.classList.add('active');
+            } catch (error) {
+                console.error('Search failed:', error);
+            }
+        }, 300);
+
+        // HTML 이스케이프 함수
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getCardTypeLabel(card) {
+            if (card.type === 'Xyz Monster' || card.type === 'XYZ Monster') return '⚫ 엑시즈';
+            if (card.type === 'Fusion Monster') return '🟣 융합';
+            return card.type;
+        }
+
+        // Add card
+        function addCard(card) {
+            if (state.extraDeck.some(c => c.id === card.id)) {
+                showToast('이미 추가된 카드입니다', 'warning');
+                return;
+            }
+
+            state.extraDeck.push(card);
+            renderDeck();
+            updateStarRange();
+            saveDeckToStorage();
+            showToast(`${card.name} 추가됨`, 'success');
+        }
+
+        // Remove card
+        function removeCard(cardId) {
+            state.extraDeck = state.extraDeck.filter(c => c.id !== cardId);
+            renderDeck();
+            updateStarRange();
+            saveDeckToStorage();
+        }
+
+        // Render deck
+        function renderDeck() {
+            const fusion = state.extraDeck.filter(c => c.type === 'Fusion Monster');
+            const xyz = state.extraDeck.filter(c => c.type === 'Xyz Monster' || c.type === 'XYZ Monster');
+
+            fusionCount.textContent = fusion.length;
+            xyzCount.textContent = xyz.length;
+            deckCount.textContent = `${state.extraDeck.length}장`;
+
+            if (state.extraDeck.length === 0) {
+                deckList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">🃏</div>
+                    <p>융합/엑시즈 몬스터를 추가하세요</p>
+                </div>
+            `;
+                return;
+            }
+
+            deckList.innerHTML = state.extraDeck.map(card => `
+            <div class="card-item" data-card-id="${card.id}">
+                <img src="${card.imageUrl || '/images/card-back.png'}" alt="${card.name}">
+                <div class="card-item-info">
+                    <div class="card-item-name">${card.name}</div>
+                    <div class="card-item-stats">
+                        ${getCardTypeLabel(card)} / ★${card.level || '-'}
+                    </div>
+                </div>
+                <button class="card-item-remove" data-remove-id="${card.id}">✕</button>
+            </div>
+        `).join('');
+        }
+
+        // Update star range
+        async function updateStarRange() {
+            if (state.extraDeck.length === 0) {
+                starRange.textContent = '가능한 별 합계: 카드를 추가하세요';
+                return;
+            }
+
+            try {
+                const response = await fetch('/numeron/api/range', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(state.extraDeck.map(c => c.id))
+                });
+                const range = await response.json();
+
+                if (range[0] === 0 && range[1] === 0) {
+                    starRange.textContent = '⚠️ 같은 랭크 엑시즈 2장 이상 + 융합 1장 이상 필요';
+                    starRange.style.color = 'var(--warning)';
+                } else {
+                    starRange.textContent = `가능한 별 합계: ${range[0]} ~ ${range[1]}`;
+                    starRange.style.color = 'var(--success)';
+                }
+            } catch (error) {
+                console.error('Failed to get range:', error);
+            }
+        }
+
+        // Calculate
+        async function calculate() {
+            const totalCardCount = parseInt(totalCardCountInput.value) || 0;
+            const targetLevel = parseInt(targetLevelInput.value) || 0;
+
+            if (state.extraDeck.length < 3) {
+                showToast('최소 3장의 카드가 필요합니다', 'warning');
+                return;
+            }
+
+            banishResults.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+            returnResults.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+            try {
+                const response = await fetch('/numeron/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        extraDeckIds: state.extraDeck.map(c => c.id),
+                        totalCardCount: totalCardCount,
+                        targetLevel: targetLevel
+                    })
+                });
+
+                const result = await response.json();
+                renderBanishResults(result.banishCombinations);
+                renderReturnResults(result.fullSequences, targetLevel);
+            } catch (error) {
+                console.error('Calculate failed:', error);
+                showToast('계산 중 오류가 발생했습니다', 'error');
+            }
+        }
+
+        // Render banish results
+        function renderBanishResults(combinations) {
+            banishCount.textContent = `${combinations.length}개 발견`;
+
+            if (combinations.length === 0) {
+                banishResults.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">😔</div>
+                    <p>가능한 제외 조합이 없습니다</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">
+                        카드 수 또는 엑스트라 덱을 조정해보세요
+                    </p>
+                </div>
+            `;
+                return;
+            }
+
+            banishResults.innerHTML = `
+            <div class="path-grid">
+                ${combinations.map(combo => `
+                    <div class="path-card">
+                        <div class="path-flow">
+                            <div class="path-card-item">
+                                <img src="${combo.xyz1.imageUrl || '/images/card-back.png'}" alt="${combo.xyz1.name}">
+                                <span class="name">★${combo.xyz1.level}</span>
+                            </div>
+                            <span class="path-arrow">+</span>
+                            <div class="path-card-item">
+                                <img src="${combo.xyz2.imageUrl || '/images/card-back.png'}" alt="${combo.xyz2.name}">
+                                <span class="name">★${combo.xyz2.level}</span>
+                            </div>
+                            <span class="path-arrow">+</span>
+                            <div class="path-card-item">
+                                <img src="${combo.fusion.imageUrl || '/images/card-back.png'}" alt="${combo.fusion.name}">
+                                <span class="name">★${combo.fusion.level}</span>
+                            </div>
+                        </div>
+                        <div class="path-match-info">
+                            <div>엑시즈 랭크: <span>${combo.xyz1.level}</span> (동일)</div>
+                            <div>별 합계: <span>${combo.xyz1.level + combo.xyz2.level + combo.fusion.level}</span></div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        }
+
+        // Render return results
+        function renderReturnResults(fullSequences, targetLevel) {
+            if (targetLevel === 0) {
+                returnResults.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">↩️</div>
+                    <p>상대 몬스터 레벨을 입력하면<br>되돌리기 조합을 계산합니다</p>
+                </div>
+            `;
+                returnCount.textContent = '';
+                return;
+            }
+
+            const entries = Object.entries(fullSequences || {});
+            let totalCount = 0;
+            entries.forEach(([_, combos]) => totalCount += combos.length);
+
+            returnCount.textContent = `${totalCount}개 발견`;
+
+            if (totalCount === 0) {
+                returnResults.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">😔</div>
+                    <p>레벨 ${targetLevel}에 맞는 되돌리기 조합이 없습니다</p>
+                </div>
+            `;
+                return;
+            }
+
+            let html = '<div class="path-grid">';
+
+            entries.forEach(([banishKey, returnCombos]) => {
+                returnCombos.forEach(combo => {
+                    html += `
+                    <div class="path-card">
+                        <div class="path-flow">
+                            <div class="path-card-item">
+                                <img src="${combo.xyz.imageUrl || '/images/card-back.png'}" alt="${combo.xyz.name}">
+                                <span class="name">★${combo.xyz.level}</span>
+                            </div>
+                            <span class="path-arrow">+</span>
+                            <div class="path-card-item">
+                                <img src="${combo.fusion.imageUrl || '/images/card-back.png'}" alt="${combo.fusion.name}">
+                                <span class="name">★${combo.fusion.level}</span>
+                            </div>
+                        </div>
+                        <div class="path-match-info">
+                            <div>별 합계: <span>${combo.xyz.level + combo.fusion.level}</span> = 상대 레벨</div>
+                        </div>
+                    </div>
+                `;
+                });
+            });
+
+            html += '</div>';
+            returnResults.innerHTML = html;
+        }
+
+        // Storage
+        function saveDeckToStorage() {
+            localStorage.setItem('numeron-deck', JSON.stringify(state.extraDeck.map(c => c.id)));
+        }
+
+        async function loadDeckFromStorage() {
+            const savedIds = JSON.parse(localStorage.getItem('numeron-deck') || '[]');
+            if (savedIds.length === 0) return;
+
+            try {
+                const response = await fetch('/numeron/api/cards', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(savedIds)
+                });
+                state.extraDeck = await response.json();
+                renderDeck();
+                updateStarRange();
+            } catch (error) {
+                console.error('Failed to load deck:', error);
+            }
+        }
+
+        // Event listeners
+        cardSearch.addEventListener('input', (e) => searchCards(e.target.value));
+
+        searchDropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.autocomplete-item');
+            if (item && item.dataset.cardIndex !== undefined) {
+                const index = parseInt(item.dataset.cardIndex);
+                const card = state.searchResults[index];
+                if (card) {
+                    addCard(card);
+                    cardSearch.value = '';
+                    searchDropdown.classList.remove('active');
+                }
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchDropdown.contains(e.target) && e.target !== cardSearch) {
+                searchDropdown.classList.remove('active');
+            }
+        });
+
+        deckList.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.card-item-remove');
+            if (removeBtn) {
+                e.stopPropagation();
+                removeCard(parseInt(removeBtn.dataset.removeId));
+            }
+        });
+
+        calculateBtn.addEventListener('click', calculate);
+
+        saveDeckBtn.addEventListener('click', () => {
+            saveDeckToStorage();
+            showToast('저장되었습니다', 'success');
+        });
+
+        clearDeckBtn.addEventListener('click', () => {
+            if (confirm('초기화하시겠습니까?')) {
+                state.extraDeck = [];
+                renderDeck();
+                updateStarRange();
+                localStorage.removeItem('numeron-deck');
+                showToast('초기화되었습니다', 'success');
+            }
+        });
+
+        // Initialize
+        loadDeckFromStorage();
+    </script>
+</body>
+
+</html>

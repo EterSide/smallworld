@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yu-Gi-Oh! Card Calculator</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">🎴 Yu-Gi-Oh! Calculator</h1>
+            <p class="subtitle">스몰월드 & 연율표고정식 계산기</p>
+        </header>
+
+        <main class="calculator-grid">
+            <a href="/smallworld" class="calculator-card">
+                <div class="card-icon">🌍</div>
+                <h2>Small World</h2>
+                <p>패에서 공개한 몬스터로 브릿지를 거쳐 원하는 카드를 서치!</p>
+                <ul class="feature-list">
+                    <li>덱 리스트 관리</li>
+                    <li>브릿지 경로 자동 계산</li>
+                    <li>서치 가능 카드 분석</li>
+                </ul>
+                <span class="btn">시작하기 →</span>
+            </a>
+
+            <a href="/numeron" class="calculator-card">
+                <div class="card-icon">⚡</div>
+                <h2>연율표고정식</h2>
+                <p>엑스트라 덱의 별 합계로 조건을 만족하는 조합 찾기!</p>
+                <ul class="feature-list">
+                    <li>엑스트라 덱 관리</li>
+                    <li>제외/되돌리기 조합 계산</li>
+                    <li>카드 수 기반 분석</li>
+                </ul>
+                <span class="btn">시작하기 →</span>
+            </a>
+        </main>
+
+        <footer class="footer">
+            <p>카드 데이터: <a href="https://ygoprodeck.com" target="_blank">YGOProDeck API</a></p>
+        </footer>
+    </div>
+</body>
+</html>

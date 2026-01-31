@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Small World Calculator</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="page-header">
+            <a href="/" class="back-link">← 뒤로가기</a>
+            <h1 class="page-title">🌍 Small World Calculator</h1>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-grid">
+            <!-- Left Panel: Deck Management -->
+            <aside>
+                <!-- Deck List Panel -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">덱 리스트</span>
+                        <span class="panel-badge" id="deck-count">0장</span>
+                    </div>
+
+                    <!-- Search -->
+                    <div class="search-wrapper">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="card-search" class="search-input" placeholder="카드명으로 검색..."
+                            autocomplete="off">
+                        <div class="autocomplete-dropdown" id="search-dropdown"></div>
+                    </div>
+
+                    <!-- Deck Cards -->
+                    <div id="deck-list" class="card-list">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📦</div>
+                            <p>카드를 검색하여 덱에 추가하세요</p>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <button id="save-deck-btn" class="btn btn-secondary">💾 저장</button>
+                        <button id="clear-deck-btn" class="btn btn-secondary">🗑️ 초기화</button>
+                    </div>
+                </div>
+
+                <!-- Selection Panel -->
+                <div class="panel" style="margin-top: 1rem;">
+                    <div class="panel-header">
+                        <span class="panel-title">카드 선택</span>
+                    </div>
+
+                    <div class="selection-grid">
+                        <div class="selection-box" id="hand-card-box">
+                            <span class="selection-box-label">패 카드</span>
+                            <span class="selection-box-placeholder">덱에서 클릭하여 선택</span>
+                        </div>
+                        <div class="selection-box" id="target-card-box">
+                            <span class="selection-box-label">타겟 카드</span>
+                            <span class="selection-box-placeholder">덱에서 클릭하여 선택</span>
+                        </div>
+                    </div>
+
+                    <div class="tabs">
+                        <button class="tab active" data-mode="hand">패 선택</button>
+                        <button class="tab" data-mode="target">타겟 선택</button>
+                    </div>
+
+                    <button id="calculate-btn" class="btn" style="width: 100%;">🔍 브릿지 경로 찾기</button>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Results -->
+            <main>
+                <div class="panel">
+                    <div class="results-header">
+                        <h2 class="results-title">계산 결과</h2>
+                        <span class="results-count" id="results-count"></span>
+                    </div>
+
+                    <div id="results-container">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🎯</div>
+                            <p>패 카드와 타겟 카드를 선택한 후<br>브릿지 경로 찾기를 클릭하세요</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script th:inline="javascript">
+        // State management
+        const state = {
+            deck: [],
+            handCard: null,
+            targetCard: null,
+            selectionMode: 'hand', // 'hand' or 'target'
+            searchResults: [] // 검색 결과 캐시
+        };
+
+        // DOM Elements
+        const cardSearch = document.getElementById('card-search');
+        const searchDropdown = document.getElementById('search-dropdown');
+        const deckList = document.getElementById('deck-list');
+        const deckCount = document.getElementById('deck-count');
+        const handCardBox = document.getElementById('hand-card-box');
+        const targetCardBox = document.getElementById('target-card-box');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsCount = document.getElementById('results-count');
+        const tabs = document.querySelectorAll('.tab');
+        const saveDeckBtn = document.getElementById('save-deck-btn');
+        const clearDeckBtn = document.getElementById('clear-deck-btn');
+
+        // Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.getElementById('toast-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Search cards
+        const searchCards = debounce(async (query) => {
+            if (query.length < 2) {
+                searchDropdown.classList.remove('active');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/smallworld/api/search?query=${encodeURIComponent(query)}`);
+                const cards = await response.json();
+
+                // 검색 결과를 state에 저장
+                state.searchResults = cards;
+
+                if (cards.length === 0) {
+                    searchDropdown.innerHTML = '<div class="autocomplete-item">검색 결과가 없습니다</div>';
+                } else {
+                    searchDropdown.innerHTML = cards.slice(0, 10).map((card, index) => `
+                    <div class="autocomplete-item" data-card-index="${index}">
+                        <img src="${card.imageUrl || '/images/card-back.png'}" alt="${escapeHtml(card.name)}">
+                        <div class="autocomplete-item-info">
+                            <div class="autocomplete-item-name">${escapeHtml(card.name)}</div>
+                            <div class="autocomplete-item-stats">
+                                ${card.attribute || ''} / ${card.race || ''} / Lv.${card.level || '-'} / ATK ${card.atk ?? '?'} / DEF ${card.def ?? '?'}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                }
+                searchDropdown.classList.add('active');
+            } catch (error) {
+                console.error('Search failed:', error);
+                showToast('검색 중 오류가 발생했습니다', 'error');
+            }
+        }, 300);
+
+        // HTML 이스케이프 함수
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Add card to deck
+        function addCardToDeck(card) {
+            // Check if already in deck
+            if (state.deck.some(c => c.id === card.id)) {
+                showToast('이미 덱에 있는 카드입니다', 'warning');
+                return;
+            }
+
+            state.deck.push(card);
+            renderDeck();
+            saveDeckToStorage();
+            showToast(`${card.name} 추가됨`, 'success');
+        }
+
+        // Remove card from deck
+        function removeCardFromDeck(cardId) {
+            state.deck = state.deck.filter(c => c.id !== cardId);
+
+            // Clear selection if removed
+            if (state.handCard && state.handCard.id === cardId) {
+                state.handCard = null;
+                renderSelectionBox(handCardBox, null, '패 카드');
+            }
+            if (state.targetCard && state.targetCard.id === cardId) {
+                state.targetCard = null;
+                renderSelectionBox(targetCardBox, null, '타겟 카드');
+            }
+
+            renderDeck();
+            saveDeckToStorage();
+        }
+
+        // Select card
+        function selectCard(card) {
+            if (state.selectionMode === 'hand') {
+                state.handCard = card;
+                renderSelectionBox(handCardBox, card, '패 카드');
+            } else {
+                state.targetCard = card;
+                renderSelectionBox(targetCardBox, card, '타겟 카드');
+            }
+            renderDeck(); // Update selection styles
+        }
+
+        // Render selection box
+        function renderSelectionBox(box, card, label) {
+            if (card) {
+                box.classList.add('filled');
+                box.innerHTML = `
+                <span class="selection-box-label">${label}</span>
+                <img src="${card.imageUrl || '/images/card-back.png'}" alt="${card.name}">
+                <span class="name">${card.name}</span>
+            `;
+            } else {
+                box.classList.remove('filled');
+                box.innerHTML = `
+                <span class="selection-box-label">${label}</span>
+                <span class="selection-box-placeholder">덱에서 클릭하여 선택</span>
+            `;
+            }
+        }
+
+        // Render deck list
+        function renderDeck() {
+            if (state.deck.length === 0) {
+                deckList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📦</div>
+                    <p>카드를 검색하여 덱에 추가하세요</p>
+                </div>
+            `;
+            } else {
+                deckList.innerHTML = state.deck.map(card => {
+                    const isHandSelected = state.handCard && state.handCard.id === card.id;
+                    const isTargetSelected = state.targetCard && state.targetCard.id === card.id;
+                    const selectedClass = (isHandSelected || isTargetSelected) ? 'selected' : '';
+
+                    return `
+                    <div class="card-item ${selectedClass}" data-card-id="${card.id}">
+                        <img src="${card.imageUrl || '/images/card-back.png'}" alt="${card.name}">
+                        <div class="card-item-info">
+                            <div class="card-item-name">${card.name}</div>
+                            <div class="card-item-stats">
+                                ${card.attribute || '-'} / ${card.race || '-'} / Lv.${card.level || '-'} / ${card.atk ?? '?'}/${card.def ?? '?'}
+                            </div>
+                        </div>
+                        <button class="card-item-remove" data-remove-id="${card.id}">✕</button>
+                    </div>
+                `;
+                }).join('');
+            }
+            deckCount.textContent = `${state.deck.length}장`;
+        }
+
+        // Calculate paths
+        async function calculatePaths() {
+            if (!state.handCard || !state.targetCard) {
+                showToast('패 카드와 타겟 카드를 모두 선택하세요', 'warning');
+                return;
+            }
+
+            if (state.handCard.id === state.targetCard.id) {
+                showToast('패 카드와 타겟 카드는 달라야 합니다', 'warning');
+                return;
+            }
+
+            resultsContainer.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+            try {
+                const response = await fetch('/smallworld/api/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        handCardId: state.handCard.id,
+                        targetCardId: state.targetCard.id,
+                        deckCardIds: state.deck.map(c => c.id)
+                    })
+                });
+
+                const paths = await response.json();
+                renderPaths(paths);
+            } catch (error) {
+                console.error('Calculate failed:', error);
+                showToast('계산 중 오류가 발생했습니다', 'error');
+                resultsContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><p>오류가 발생했습니다</p></div>';
+            }
+        }
+
+        // Render paths
+        function renderPaths(paths) {
+            resultsCount.textContent = `${paths.length}개의 경로 발견`;
+
+            if (paths.length === 0) {
+                resultsContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">😔</div>
+                    <p>가능한 브릿지 경로가 없습니다</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">
+                        다른 카드 조합을 시도해보세요
+                    </p>
+                </div>
+            `;
+                return;
+            }
+
+            resultsContainer.innerHTML = `
+            <div class="path-grid">
+                ${paths.map(path => `
+                    <div class="path-card">
+                        <div class="path-flow">
+                            <div class="path-card-item">
+                                <img src="${path.handCard.imageUrl || '/images/card-back.png'}" alt="${path.handCard.name}">
+                                <span class="name">${path.handCard.name}</span>
+                            </div>
+                            <span class="path-arrow">→</span>
+                            <div class="path-card-item">
+                                <img src="${path.bridgeCard.imageUrl || '/images/card-back.png'}" alt="${path.bridgeCard.name}">
+                                <span class="name">${path.bridgeCard.name}</span>
+                            </div>
+                            <span class="path-arrow">→</span>
+                            <div class="path-card-item">
+                                <img src="${path.targetCard.imageUrl || '/images/card-back.png'}" alt="${path.targetCard.name}">
+                                <span class="name">${path.targetCard.name}</span>
+                            </div>
+                        </div>
+                        <div class="path-match-info">
+                            <div>패→브릿지: <span>${path.handToBridgeMatch}</span></div>
+                            <div>브릿지→타겟: <span>${path.bridgeToTargetMatch}</span></div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        }
+
+        // Local storage
+        function saveDeckToStorage() {
+            localStorage.setItem('smallworld-deck', JSON.stringify(state.deck.map(c => c.id)));
+        }
+
+        async function loadDeckFromStorage() {
+            const savedIds = JSON.parse(localStorage.getItem('smallworld-deck') || '[]');
+            if (savedIds.length === 0) return;
+
+            try {
+                const response = await fetch('/smallworld/api/cards', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(savedIds)
+                });
+                state.deck = await response.json();
+                renderDeck();
+            } catch (error) {
+                console.error('Failed to load deck:', error);
+            }
+        }
+
+        // Event listeners
+        cardSearch.addEventListener('input', (e) => searchCards(e.target.value));
+
+        searchDropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.autocomplete-item');
+            if (item && item.dataset.cardIndex !== undefined) {
+                const index = parseInt(item.dataset.cardIndex);
+                const card = state.searchResults[index];
+                if (card) {
+                    addCardToDeck(card);
+                    cardSearch.value = '';
+                    searchDropdown.classList.remove('active');
+                }
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchDropdown.contains(e.target) && e.target !== cardSearch) {
+                searchDropdown.classList.remove('active');
+            }
+        });
+
+        deckList.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.card-item-remove');
+            if (removeBtn) {
+                e.stopPropagation();
+                removeCardFromDeck(parseInt(removeBtn.dataset.removeId));
+                return;
+            }
+
+            const cardItem = e.target.closest('.card-item');
+            if (cardItem) {
+                const cardId = parseInt(cardItem.dataset.cardId);
+                const card = state.deck.find(c => c.id === cardId);
+                if (card) selectCard(card);
+            }
+        });
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                state.selectionMode = tab.dataset.mode;
+            });
+        });
+
+        calculateBtn.addEventListener('click', calculatePaths);
+
+        saveDeckBtn.addEventListener('click', () => {
+            saveDeckToStorage();
+            showToast('덱이 저장되었습니다', 'success');
+        });
+
+        clearDeckBtn.addEventListener('click', () => {
+            if (confirm('덱을 초기화하시겠습니까?')) {
+                state.deck = [];
+                state.handCard = null;
+                state.targetCard = null;
+                renderDeck();
+                renderSelectionBox(handCardBox, null, '패 카드');
+                renderSelectionBox(targetCardBox, null, '타겟 카드');
+                localStorage.removeItem('smallworld-deck');
+                showToast('덱이 초기화되었습니다', 'success');
+            }
+        });
+
+        // Initialize
+        loadDeckFromStorage();
+    </script>
+</body>
+
+</html>
