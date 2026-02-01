@@ -184,7 +184,8 @@
 
         // Add card to deck
         function addCardToDeck(card) {
-            // Check if already in deck
+            // state.deck가 배열이 아닐 수 있음 (저장 덱 로드 실패 시 response.json()이 객체로 들어온 경우 등)
+            if (!Array.isArray(state.deck)) state.deck = [];
             if (state.deck.some(c => c.id === card.id)) {
                 showToast('이미 덱에 있는 카드입니다', 'warning');
                 return;
@@ -372,10 +373,12 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(savedIds)
                 });
-                state.deck = await response.json();
+                const data = await response.json();
+                state.deck = Array.isArray(data) ? data : [];
                 renderDeck();
             } catch (error) {
                 console.error('Failed to load deck:', error);
+                state.deck = [];
             }
         }
 

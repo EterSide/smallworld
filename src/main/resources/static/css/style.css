@@ -434,9 +434,12 @@ a {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1rem;
+    align-items: start; /* 카드가 그리드에서 늘어나지 않도록 */
 }
 
 .path-card {
+    display: flex;
+    flex-direction: column;
     background: var(--bg-input);
     border-radius: var(--radius-md);
     padding: 1.25rem;
@@ -484,10 +487,12 @@ a {
 
 .path-match-info {
     font-size: 0.75rem;
+    line-height: 1.35;
     color: var(--text-muted);
     background: var(--bg-secondary);
-    padding: 0.5rem;
+    padding: 0.5rem 0.6rem;
     border-radius: var(--radius-sm);
+    flex-shrink: 0; /* 내용 높이만 사용, 빈 공간 없음 */
 }
 
 .path-match-info span {
