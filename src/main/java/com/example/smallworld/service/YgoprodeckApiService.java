@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
+
 /**
  * YGOProDeck API 연동 서비스
  */
@@ -138,5 +140,39 @@ public class YgoprodeckApiService {
         return searchCards(name).stream()
                 .filter(Card::isMonster)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * YGOProDeck API에서 전체 카드를 가져와 DB에 저장 (PostgreSQL 첫 로딩용).
+     * 한 번 호출해 두면 이후 검색은 DB만 사용.
+     */
+    @Transactional
+    public int syncAllCardsFromApi() {
+        String url = apiBaseUrl + "/cardinfo.php";
+        log.info("Syncing all cards from API: {}", url);
+        try {
+            YgoprodeckResponse response = restTemplate.getForObject(url, YgoprodeckResponse.class);
+            if (response == null || response.getData() == null || response.getData().isEmpty()) {
+                log.warn("No cards returned from API");
+                return 0;
+            }
+            List<Card> cards = response.getData().stream()
+                    .map(CardDto::toEntity)
+                    .collect(toList());
+            int batchSize = 500;
+            int saved = 0;
+            for (int i = 0; i < cards.size(); i += batchSize) {
+                int end = Math.min(i + batchSize, cards.size());
+                List<Card> batch = cards.subList(i, end);
+                cardRepository.saveAll(batch);
+                saved += batch.size();
+                log.info("Saved cards {}-{} / {}", i + 1, end, cards.size());
+            }
+            log.info("Sync complete: {} cards saved", saved);
+            return saved;
+        } catch (Exception e) {
+            log.error("Failed to sync cards from API: {}", e.getMessage(), e);
+            throw new RuntimeException("전체 카드 동기화 실패: " + e.getMessage(), e);
+        }
     }
 }
