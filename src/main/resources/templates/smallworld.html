@@ -49,6 +49,19 @@
                     </div>
                 </div>
 
+                <!-- Saved Decks Panel -->
+                <div class="panel" style="margin-top: 1rem;">
+                    <div class="panel-header">
+                        <span class="panel-title">저장된 덱</span>
+                    </div>
+                    <div id="saved-decks-list" class="saved-deck-list">
+                        <!-- Saved decks will be rendered here -->
+                        <div class="empty-state" style="padding: 1rem;">
+                            <p style="font-size: 0.8rem;">저장된 덱이 없습니다</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Selection Panel -->
                 <div class="panel" style="margin-top: 1rem;">
                     <div class="panel-header">
@@ -90,6 +103,72 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Common Hand Traps Panel -->
+                <div class="panel" style="margin-top: 1rem;">
+                    <div class="panel-header">
+                        <span class="panel-title">자주 쓰이는 카드 (패트랩 등)</span>
+                    </div>
+                    <div class="common-cards-grid" id="common-cards-list">
+                        <!-- Items will be populated by JS or static HTML -->
+                        <button class="common-card-btn" data-search="Droll & Lock Bird">
+                            <span class="en">Droll & Lock Bird</span>
+                            <span class="ko">드롤 & 로크 버드</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Effect Veiler">
+                            <span class="en">Effect Veiler</span>
+                            <span class="ko">이펙트 뵐러</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Ash Blossom & Joyous Spring">
+                            <span class="en">Ash Blossom & Joyous Spring</span>
+                            <span class="ko">하루 우라라</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Ghost Ogre & Snow Rabbit">
+                            <span class="en">Ghost Ogre & Snow Rabbit</span>
+                            <span class="ko">유령토끼</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Ghost Belle & Haunted Mansion">
+                            <span class="en">Ghost Belle & Haunted Mansion</span>
+                            <span class="ko">저택 와라시</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Ghost Reaper & Winter Cherries">
+                            <span class="en">Ghost Reaper & Winter Cherries</span>
+                            <span class="ko">부유벚꽃</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Ghost Sister & Spooky Dogwood">
+                            <span class="en">Ghost Sister & Spooky Dogwood</span>
+                            <span class="ko">하나 미즈키</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Ghost Mourner & Moonlit Chill">
+                            <span class="en">Ghost Mourner & Moonlit Chill</span>
+                            <span class="ko">사요 시구레</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Mulcharmy Purulia">
+                            <span class="en">Mulcharmy Purulia</span>
+                            <span class="ko">말챠미 푸루리아</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Mulcharmy Fuwalos">
+                            <span class="en">Mulcharmy Fuwalos</span>
+                            <span class="ko">말챠미 후와로스</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Mulcharmy Meowls">
+                            <span class="en">Mulcharmy Meowls</span>
+                            <span class="ko">말챠미 냐루스</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Nibiru, the Primal Being">
+                            <span class="en">Nibiru, the Primal Being</span>
+                            <span class="ko">원시생명체 니비루</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Retaliating &quot;C&quot;">
+                            <span class="en">Retaliating "C"</span>
+                            <span class="ko">응전의 G</span>
+                        </button>
+                        <button class="common-card-btn" data-search="Maxx &quot;C&quot;">
+                            <span class="en">Maxx "C"</span>
+                            <span class="ko">증식의 G</span>
+                        </button>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
@@ -103,7 +182,8 @@
             handCard: null,
             targetCard: null,
             selectionMode: 'hand', // 'hand' or 'target'
-            searchResults: [] // 검색 결과 캐시
+            searchResults: [],
+            savedDecks: [] // {id, name, cardIds, date}
         };
 
         // DOM Elements
@@ -119,7 +199,9 @@
         const tabs = document.querySelectorAll('.tab');
         const saveDeckBtn = document.getElementById('save-deck-btn');
         const clearDeckBtn = document.getElementById('clear-deck-btn');
+        const savedDecksList = document.getElementById('saved-decks-list');
 
+        // ... existing debounce, showToast ...
         // Debounce function
         function debounce(func, wait) {
             let timeout;
@@ -138,6 +220,7 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
+        // ... existing searchCards, escapeHtml ...
         // Search cards
         const searchCards = debounce(async (query) => {
             if (query.length < 2) {
@@ -184,7 +267,7 @@
 
         // Add card to deck
         function addCardToDeck(card) {
-            // state.deck가 배열이 아닐 수 있음 (저장 덱 로드 실패 시 response.json()이 객체로 들어온 경우 등)
+            // state.deck가 배열이 아닐 수 있음
             if (!Array.isArray(state.deck)) state.deck = [];
             if (state.deck.some(c => c.id === card.id)) {
                 showToast('이미 덱에 있는 카드입니다', 'warning');
@@ -193,7 +276,7 @@
 
             state.deck.push(card);
             renderDeck();
-            saveDeckToStorage();
+            saveCurrentState(); // Autosave
             showToast(`${card.name} 추가됨`, 'success');
         }
 
@@ -212,7 +295,7 @@
             }
 
             renderDeck();
-            saveDeckToStorage();
+            saveCurrentState(); // Autosave
         }
 
         // Select card
@@ -227,6 +310,7 @@
             renderDeck(); // Update selection styles
         }
 
+        // ... existing renderSelectionBox, renderDeck, calculatePaths, renderPaths ...
         // Render selection box
         function renderSelectionBox(box, card, label) {
             if (card) {
@@ -279,6 +363,7 @@
 
         // Calculate paths
         async function calculatePaths() {
+            // ... existing implementation ...
             if (!state.handCard || !state.targetCard) {
                 showToast('패 카드와 타겟 카드를 모두 선택하세요', 'warning');
                 return;
@@ -358,30 +443,124 @@
         `;
         }
 
-        // Local storage
-        function saveDeckToStorage() {
-            localStorage.setItem('smallworld-deck', JSON.stringify(state.deck.map(c => c.id)));
+        // ==========================================
+        // Storage Logic (Updated)
+        // ==========================================
+
+        // Save current deck state (Autosave)
+        function saveCurrentState() {
+            localStorage.setItem('smallworld-deck-autosave', JSON.stringify(state.deck.map(c => c.id)));
         }
 
-        async function loadDeckFromStorage() {
-            const savedIds = JSON.parse(localStorage.getItem('smallworld-deck') || '[]');
+        // Load autosave
+        async function loadCurrentState() {
+            const savedIds = JSON.parse(localStorage.getItem('smallworld-deck-autosave') || '[]');
             if (savedIds.length === 0) return;
+            await loadCardsByIds(savedIds);
+        }
 
+        // Load saved decks list
+        function loadSavedDecksList() {
+            const saved = localStorage.getItem('smallworld-saved-decks');
+            state.savedDecks = saved ? JSON.parse(saved) : [];
+            renderSavedDecks();
+        }
+
+        // Save a new named deck
+        function saveNamedDeck() {
+            if (state.deck.length === 0) {
+                showToast('빈 덱은 저장할 수 없습니다', 'warning');
+                return;
+            }
+
+            const name = prompt('덱 이름을 입력하세요:');
+            if (!name || name.trim() === '') return;
+
+            const newDeck = {
+                id: Date.now(),
+                name: name.trim(),
+                cardIds: state.deck.map(c => c.id),
+                date: new Date().toLocaleDateString()
+            };
+
+            state.savedDecks.push(newDeck);
+            localStorage.setItem('smallworld-saved-decks', JSON.stringify(state.savedDecks));
+            renderSavedDecks();
+            showToast(`'${name}' 덱이 저장되었습니다`, 'success');
+        }
+
+        // Load a specific saved deck
+        async function loadNamedDeck(deckId) {
+            const savedDeck = state.savedDecks.find(d => d.id === deckId);
+            if (!savedDeck) return;
+
+            if (confirm(`'${savedDeck.name}' 덱을 불러오시겠습니까? 현재 작성 중인 덱은 덮어씌워집니다.`)) {
+                await loadCardsByIds(savedDeck.cardIds);
+                showToast(`'${savedDeck.name}' 덱을 불러왔습니다`, 'success');
+            }
+        }
+
+        // Delete a saved deck
+        function deleteNamedDeck(deckId) {
+            if (confirm('정말 이 덱을 삭제하시겠습니까?')) {
+                state.savedDecks = state.savedDecks.filter(d => d.id !== deckId);
+                localStorage.setItem('smallworld-saved-decks', JSON.stringify(state.savedDecks));
+                renderSavedDecks();
+                showToast('덱이 삭제되었습니다', 'info');
+            }
+        }
+
+        // Helper to load cards from server by IDs
+        async function loadCardsByIds(ids) {
             try {
                 const response = await fetch('/smallworld/api/cards', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(savedIds)
+                    body: JSON.stringify(ids)
                 });
                 const data = await response.json();
                 state.deck = Array.isArray(data) ? data : [];
+
+                // Clear selection
+                state.handCard = null;
+                state.targetCard = null;
+                renderSelectionBox(handCardBox, null, '패 카드');
+                renderSelectionBox(targetCardBox, null, '타겟 카드');
+
                 renderDeck();
+                saveCurrentState();
             } catch (error) {
                 console.error('Failed to load deck:', error);
-                state.deck = [];
+                showToast('덱 로딩 실패', 'error');
             }
         }
 
+        // Render saved decks list UI
+        function renderSavedDecks() {
+            if (state.savedDecks.length === 0) {
+                savedDecksList.innerHTML = `
+                    <div class="empty-state" style="padding: 1rem;">
+                        <p style="font-size: 0.8rem;">저장된 덱이 없습니다</p>
+                    </div>`;
+                return;
+            }
+
+            savedDecksList.innerHTML = state.savedDecks.map(deck => `
+                <div class="saved-deck-item" onclick="loadNamedDeck(${deck.id})">
+                    <div class="saved-deck-info">
+                        <div class="saved-deck-name">${escapeHtml(deck.name)}</div>
+                        <div class="saved-deck-meta">${deck.cardIds.length}장 • ${deck.date}</div>
+                    </div>
+                    <button class="saved-deck-delete" onclick="event.stopPropagation(); deleteNamedDeck(${deck.id})">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        // Make functions global for inline onclick handlers
+        window.loadNamedDeck = loadNamedDeck;
+        window.deleteNamedDeck = deleteNamedDeck;
+
+        // ... existing event listeners ...
         // Event listeners
         cardSearch.addEventListener('input', (e) => searchCards(e.target.value));
 
@@ -404,6 +583,7 @@
             }
         });
 
+        // Deck list item click/remove
         deckList.addEventListener('click', (e) => {
             const removeBtn = e.target.closest('.card-item-remove');
             if (removeBtn) {
@@ -420,6 +600,7 @@
             }
         });
 
+        // Tabs
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
@@ -430,9 +611,9 @@
 
         calculateBtn.addEventListener('click', calculatePaths);
 
+        // Update Save button to use named save
         saveDeckBtn.addEventListener('click', () => {
-            saveDeckToStorage();
-            showToast('덱이 저장되었습니다', 'success');
+            saveNamedDeck();
         });
 
         clearDeckBtn.addEventListener('click', () => {
@@ -443,13 +624,52 @@
                 renderDeck();
                 renderSelectionBox(handCardBox, null, '패 카드');
                 renderSelectionBox(targetCardBox, null, '타겟 카드');
-                localStorage.removeItem('smallworld-deck');
+                saveCurrentState(); // Update autosave
                 showToast('덱이 초기화되었습니다', 'success');
             }
         });
 
-        // Initialize
-        loadDeckFromStorage();
+        // Initialize (Load both autosave and saved decks list)
+        loadCurrentState();
+        loadSavedDecksList();
+
+        // Common Cards Click Handler
+        document.getElementById('common-cards-list').addEventListener('click', async (e) => {
+            const btn = e.target.closest('.common-card-btn');
+            if (!btn) return;
+
+            const searchName = btn.dataset.search;
+            if (!searchName) return;
+
+            // Visual feedback
+            const originalBg = btn.style.backgroundColor;
+            btn.style.backgroundColor = 'var(--primary-light)';
+
+            try {
+                // 1. Search for exact match first
+                const response = await fetch(`/smallworld/api/search?query=${encodeURIComponent(searchName)}`);
+                const cards = await response.json();
+
+                // 2. Find exact match (ignoring case)
+                const exactMatch = cards.find(c => c.name.toLowerCase() === searchName.toLowerCase());
+
+                if (exactMatch) {
+                    addCardToDeck(exactMatch);
+                } else if (cards.length > 0) {
+                    // Fallback to first result if partial match found
+                    addCardToDeck(cards[0]);
+                } else {
+                    showToast(`'${searchName}' 카드를 찾을 수 없습니다`, 'error');
+                }
+            } catch (error) {
+                console.error('Common card add failed:', error);
+                showToast('카드 추가 중 오류가 발생했습니다', 'error');
+            } finally {
+                setTimeout(() => {
+                    btn.style.backgroundColor = originalBg;
+                }, 200);
+            }
+        });
     </script>
 </body>
 
