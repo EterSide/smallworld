@@ -23,7 +23,9 @@
 }
 
 /* ===== Reset & Base ===== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -434,7 +436,8 @@ a {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1rem;
-    align-items: start; /* 카드가 그리드에서 늘어나지 않도록 */
+    align-items: start;
+    /* 카드가 그리드에서 늘어나지 않도록 */
 }
 
 .path-card {
@@ -492,7 +495,8 @@ a {
     background: var(--bg-secondary);
     padding: 0.5rem 0.6rem;
     border-radius: var(--radius-sm);
-    flex-shrink: 0; /* 내용 높이만 사용, 빈 공간 없음 */
+    flex-shrink: 0;
+    /* 내용 높이만 사용, 빈 공간 없음 */
 }
 
 .path-match-info span {
@@ -543,6 +547,12 @@ a {
 .selection-box .name {
     font-size: 0.8rem;
     font-weight: 500;
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 0.5rem;
 }
 
 .selection-box-placeholder {
@@ -598,7 +608,9 @@ a {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ===== Toast Notifications ===== */
@@ -632,6 +644,7 @@ a {
         opacity: 0;
         transform: translateX(100%);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
