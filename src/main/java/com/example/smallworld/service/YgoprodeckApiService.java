@@ -47,13 +47,13 @@ public class YgoprodeckApiService {
 
         // API 호출
         try {
-            String url = UriComponentsBuilder.fromUriString(apiBaseUrl + "/cardinfo.php")
+            var uri = UriComponentsBuilder.fromUriString(apiBaseUrl + "/cardinfo.php")
                     .queryParam("fname", name)
                     .build()
-                    .toUriString();
+                    .toUri();
 
-            log.info("Calling YGOProDeck API: {}", url);
-            YgoprodeckResponse response = restTemplate.getForObject(url, YgoprodeckResponse.class);
+            log.info("Calling YGOProDeck API: {}", uri);
+            YgoprodeckResponse response = restTemplate.getForObject(uri, YgoprodeckResponse.class);
 
             if (response != null && response.getData() != null) {
                 List<Card> cards = response.getData().stream()
@@ -84,13 +84,13 @@ public class YgoprodeckApiService {
 
         // API 호출
         try {
-            String url = UriComponentsBuilder.fromUriString(apiBaseUrl + "/cardinfo.php")
+            var uri = UriComponentsBuilder.fromUriString(apiBaseUrl + "/cardinfo.php")
                     .queryParam("id", id)
                     .build()
-                    .toUriString();
+                    .toUri();
 
-            log.info("Calling YGOProDeck API: {}", url);
-            YgoprodeckResponse response = restTemplate.getForObject(url, YgoprodeckResponse.class);
+            log.info("Calling YGOProDeck API: {}", uri);
+            YgoprodeckResponse response = restTemplate.getForObject(uri, YgoprodeckResponse.class);
 
             if (response != null && response.getData() != null && !response.getData().isEmpty()) {
                 Card card = response.getData().get(0).toEntity();
