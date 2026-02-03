@@ -8,17 +8,5 @@ services:
     dockerfilePath: ./Dockerfile
     # PORT는 Render가 자동 주입, application.properties에서 server.port=${PORT:8080} 사용
     envVars:
-      - key: SPRING_DATASOURCE_URL
-        fromDatabase:
-          name: smallworld-db # (Optional) Render에 DB 생성 후 이름을 여기에 매칭하면 자동 주입됨
-          property: connectionString
-      - key: SPRING_DATASOURCE_USERNAME
-        fromDatabase:
-          name: smallworld-db
-          property: user
-      - key: SPRING_DATASOURCE_PASSWORD
-        fromDatabase:
-          name: smallworld-db
-          property: password
       - key: SMALLWORLD_OPEN_BROWSER
         value: "false"

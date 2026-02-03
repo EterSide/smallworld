@@ -15,13 +15,13 @@ Yu-Gi-Oh! 카드 데이터를 활용한 유틸리티 웹 애플리케이션입�
 
 *   **Backend**: Java 17, Spring Boot 3.x
 *   **Frontend**: Thymeleaf, Vanilla JS/CSS
-*   **Database**: H2 (Local), PostgreSQL (Production/Render)
+*   **Database**: H2 (Embedded File DB)
 *   **External API**: [YGOProDeck API](https://db.ygoprodeck.com/api/v7/cardinfo.php)
 
 ## 실행 방법
 
 ### 로컬 개발 (Local Development)
-별도의 DB 설치 없이 바로 실행 가능합니다 (H2 파일 DB 사용).
+별도의 DB 설치 없이 바로 실행 가능합니다.
 ```bash
 ./gradlew bootRun
 ```
@@ -29,7 +29,6 @@ Yu-Gi-Oh! 카드 데이터를 활용한 유틸리티 웹 애플리케이션입�
 
 ### 배포 (Deployment)
 Render 등의 PaaS 환경에 배포 시 다음 환경 변수를 설정하세요.
-*   `SPRING_DATASOURCE_URL`, `USERNAME`, `PASSWORD`: PostgreSQL 연결 정보
 *   `SMALLWORLD_OPEN_BROWSER`: `false` (서버 환경에서는 브라우저 실행 비활성화)
 
 ## 라이선스
