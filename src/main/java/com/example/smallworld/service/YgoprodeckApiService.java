@@ -49,6 +49,7 @@ public class YgoprodeckApiService {
         try {
             var uri = UriComponentsBuilder.fromUriString(apiBaseUrl + "/cardinfo.php")
                     .queryParam("fname", name)
+                    .encode()
                     .build()
                     .toUri();
 
@@ -86,6 +87,7 @@ public class YgoprodeckApiService {
         try {
             var uri = UriComponentsBuilder.fromUriString(apiBaseUrl + "/cardinfo.php")
                     .queryParam("id", id)
+                    .encode()
                     .build()
                     .toUri();
 
